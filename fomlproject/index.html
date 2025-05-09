@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cibus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="data:image/x-icon;base64,AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAnp6eAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA" type="image/x-icon">
+    <style>
+        /* Custom styles for chat bubble alignment and scrollbar */
+        .chat-container {
+            max-height: 70vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #4b5563 #1f2937;
+        }
+        .chat-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-container::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        .chat-container::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+        .message-user {
+            margin-left: 20%;
+            background-color: #3b82f6;
+        }
+        .message-bot {
+            margin-right: 20%;
+            background-color: #4b5563;
+        }
+        /* Style for clickable links in chat messages */
+        .message-bot a {
+            color: #60a5fa;
+            text-decoration: underline;
+            word-break: break-all;
+        }
+        .message-bot a:hover {
+            color: #93c5fd;
+        }
+        /* Style for embedded video */
+        .message-bot .video-container {
+            margin-top: 8px;
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            height: 0;
+            overflow: hidden;
+        }
+        .message-bot .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-2xl p-4">
+        <h1 class="text-3xl font-bold text-center mb-4">This is Cibus!</h1>
+        <div id="chat-container" class="chat-container bg-gray-800 rounded-lg p-4 mb-4">
+            <div id="chat-messages" class="space-y-4">
+                <!-- Chat messages will be appended here -->
+                <div class="message-bot p-3 rounded-lg text-gray-200">
+                    Hello! This is Cibus , Lets talk !
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <input
+                type="text"
+                id="user-input"
+                placeholder="Type your message..."
+                class="flex-1 bg-gray-700 text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+                id="send-btn"
+                class="bg-blue-600 hover:bg-blue-700 p-3 rounded-lg transition duration-200"
+                title="Send message"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                    />
+                </svg>
+            </button>
+            <button
+                id="mic-btn"
+                class="bg-gray-600 hover:bg-gray-700 p-3 rounded-lg transition duration-200"
+                title="Toggle continuous listening"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                    />
+                </svg>
+            </button>
+            <button
+                id="tts-toggle-btn"
+                class="bg-purple-600 hover:bg-purple-700 p-3 rounded-lg transition duration-200"
+                title="Toggle text-to-speech"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M19 12h2m-3 0a6 6 0 01-6 6v2a8 8 0 008-8h-2zm-6-6a6 6 0 00-6 6h-2a8 8 0 008-8v2z"
+                    />
+                </svg>
+            </button>
+        </div>
+        <div id="status" class="text-sm text-gray-400 mt-2"></div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById("chat-messages");
+        const userInput = document.getElementById("user-input");
+        const sendBtn = document.getElementById("send-btn");
+        const micBtn = document.getElementById("mic-btn");
+        const ttsToggleBtn = document.getElementById("tts-toggle-btn");
+        const status = document.getElementById("status");
+        const chatContainer = document.getElementById("chat-container");
+        const API_BASE_URL = "http://localhost:8000"; // Backend URL
+
+        // Initialize Web Speech API
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+        const synth = window.speechSynthesis;
+        let ttsEnabled = true; // Default: TTS enabled
+        let isListening = false; // Track continuous listening state
+        let conversationEnded = false; // Track if conversation has ended
+
+        // Debug speech support
+        console.log("SpeechRecognition supported:", !!SpeechRecognition);
+        console.log("SpeechSynthesis supported:", !!synth);
+
+        if (recognition) {
+            recognition.lang = "en-US";
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+            recognition.continuous = true; // Enable continuous recognition
+            console.log("SpeechRecognition initialized:", recognition);
+        } else {
+            micBtn.disabled = true;
+            micBtn.classList.add("opacity-50", "cursor-not-allowed");
+            updateStatus("Speech recognition not supported in this browser. Use Chrome or Edge.", true);
+        }
+
+        // Toggle continuous listening
+        micBtn.addEventListener("click", () => {
+            if (!recognition) return;
+
+            isListening = !isListening;
+            micBtn.classList.toggle("bg-gray-600", !isListening);
+            micBtn.classList.toggle("bg-green-600", isListening);
+
+            if (isListening) {
+                try {
+                    recognition.start();
+                    updateStatus("Continuous listening started... Speak now.");
+                } catch (error) {
+                    console.error("SpeechRecognition start error:", error);
+                    updateStatus(`Error starting speech recognition: ${error.message}`, true);
+                    isListening = false;
+                    micBtn.classList.add("bg-gray-600");
+                    micBtn.classList.remove("bg-green-600");
+                }
+            } else {
+                recognition.stop();
+                updateStatus("Continuous listening stopped.");
+            }
+        });
+
+        // Toggle TTS
+        ttsToggleBtn.addEventListener("click", () => {
+            ttsEnabled = !ttsEnabled;
+            ttsToggleBtn.classList.toggle("bg-purple-600", ttsEnabled);
+            ttsToggleBtn.classList.toggle("bg-gray-600", !ttsEnabled);
+            updateStatus(`Text-to-speech ${ttsEnabled ? "enabled" : "disabled"}`);
+            if (synth.speaking) synth.cancel(); // Stop any ongoing speech
+        });
+
+        // Scroll to bottom of chat
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Add message to chat
+        function addMessage(text, isUser) {
+            const messageDiv = document.createElement("div");
+            messageDiv.className = `p-3 rounded-lg text-gray-200 ${
+                isUser ? "message-user" : "message-bot"
+            }`;
+
+            // Check if this is the goodbye message with a recipe video
+            const isGoodbyeMessage = text.includes("Goodbye! The sentiment of our conversation was");
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const urlMatch = text.match(urlRegex);
+
+            if (isGoodbyeMessage && urlMatch) {
+                // Extract the YouTube video ID from the URL
+                const youtubeUrl = urlMatch[0];
+                const videoIdMatch = youtubeUrl.match(/(?:v=)([^&]+)/);
+                const videoId = videoIdMatch ? videoIdMatch[1] : null;
+
+                if (videoId) {
+                    // Remove the URL from the text
+                    const textWithoutUrl = text.replace(urlRegex, "").trim();
+                    messageDiv.textContent = textWithoutUrl;
+
+                    // Create a video container and embed the YouTube video
+                    const videoContainer = document.createElement("div");
+                    videoContainer.className = "video-container";
+                    videoContainer.innerHTML = `
+                        <iframe
+                            src="https://www.youtube.com/embed/${videoId}"
+                            title="Recipe Video"
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen
+                        ></iframe>
+                    `;
+                    messageDiv.appendChild(videoContainer);
+                } else {
+                    // Fallback: render the URL as a clickable link if video ID extraction fails
+                    const htmlText = text.replace(urlRegex, (url) => {
+                        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+                    });
+                    messageDiv.innerHTML = htmlText;
+                }
+            } else if (urlRegex.test(text)) {
+                // Handle other URLs as clickable links
+                const htmlText = text.replace(urlRegex, (url) => {
+                    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+                });
+                messageDiv.innerHTML = htmlText;
+            } else {
+                messageDiv.textContent = text;
+            }
+
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        // Update status message
+        function updateStatus(text, isError = false) {
+            status.textContent = text;
+            status.className = `text-sm mt-2 ${
+                isError ? "text-red-400" : "text-gray-400"
+            }`;
+        }
+
+        // Speak response using SpeechSynthesis
+        function speak(text) {
+            if (!ttsEnabled || !synth) {
+                console.log("TTS skipped: disabled or not supported");
+                return;
+            }
+            // Remove the URL part for TTS to avoid speaking the link
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const cleanText = text.replace(urlRegex, "").trim();
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.lang = "en-US";
+            utterance.rate = 1.0;
+            utterance.volume = 0.9;
+            utterance.onstart = () => console.log("TTS started:", cleanText);
+            utterance.onend = () => console.log("TTS ended:", cleanText);
+            utterance.onerror = (event) => console.error("TTS error:", event.error);
+            synth.speak(utterance);
+        }
+
+        // Send message to backend (used for both typed and spoken input)
+        async function sendMessage(text) {
+            addMessage(text, true);
+            userInput.value = "";
+            updateStatus("Sending...");
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/chat`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: text }),
+                });
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                addMessage(data.response, false);
+                speak(data.response); // Speak the bot's response
+                updateStatus(isListening ? "Listening... Speak now." : "");
+
+                // Check if conversation has ended
+                if (data.response.includes("Goodbye")) {
+                    conversationEnded = true;
+                    isListening = false;
+                    recognition.stop();
+                    micBtn.classList.add("bg-gray-600");
+                    micBtn.classList.remove("bg-green-600");
+                    userInput.disabled = true;
+                    sendBtn.disabled = true;
+                    micBtn.disabled = true;
+                    ttsToggleBtn.disabled = true;
+                    updateStatus("Conversation ended.");
+                }
+            } catch (error) {
+                console.error("Chat error:", error);
+                updateStatus(`Error: ${error.message}`, true);
+            }
+        }
+
+        // Handle typed message
+        async function handleTypedMessage() {
+            const text = userInput.value.trim();
+            if (!text) {
+                updateStatus("Please enter a message.");
+                return;
+            }
+            await sendMessage(text);
+        }
+
+        // Handle speech input
+        if (recognition) {
+            recognition.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript;
+                console.log("Speech recognized:", transcript);
+                if (transcript) {
+                    sendMessage(transcript);
+                } else {
+                    updateStatus("No speech detected.", true);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error("SpeechRecognition error:", event.error);
+                if (event.error === "no-speech" || event.error === "aborted") {
+                    // Ignore minor errors and restart
+                    if (isListening && !conversationEnded) {
+                        setTimeout(() => {
+                            try {
+                                recognition.start();
+                            } catch (error) {
+                                console.error("Restart error:", error);
+                            }
+                        }, 100);
+                    }
+                    return;
+                }
+                updateStatus(`Speech recognition error: ${event.error}`, true);
+                isListening = false;
+                micBtn.classList.add("bg-gray-600");
+                micBtn.classList.remove("bg-green-600");
+            };
+
+            recognition.onend = () => {
+                console.log("SpeechRecognition ended");
+                if (isListening && !conversationEnded) {
+                    try {
+                        recognition.start();
+                    } catch (error) {
+                        console.error("Restart error:", error);
+                        updateStatus("Error restarting speech recognition.", true);
+                        isListening = false;
+                        micBtn.classList.add("bg-gray-600");
+                        micBtn.classList.remove("bg-green-600");
+                    }
+                } else {
+                    updateStatus(conversationEnded ? "Conversation ended." : "");
+                }
+            };
+        }
+
+        // Event listeners
+        sendBtn.addEventListener("click", handleTypedMessage);
+        userInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") handleTypedMessage();
+        });
+
+        // Initialize
+        scrollToBottom();
+        speak("Hello! This is Cibus , Lets talk !");
+    </script>
+</body>
+</html>
